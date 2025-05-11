@@ -1,4 +1,4 @@
-import smtplib
+import aiosmtplib
 
 from email.mime.text import MIMEText
 from email.header import Header
@@ -14,12 +14,13 @@ async def async_send_mail(recipients_emails: list, header: str, msg: str) -> Non
     msg['From'] = login
     msg['To'] = ', '.join(recipients_emails)
 
-    smtp = smtplib.SMTP('smtp.yandex.ru', 587, timeout=10)
+    smtp = aiosmtplib.SMTP('smtp.yandex.ru', 587, timeout=10)
+    await smtp.connect()
     try:
-        smtp.starttls()
-        smtp.login(login, password)
-        smtp.sendmail(msg['From'], recipients_emails, msg.as_string())
+        await smtp.starttls()
+        await smtp.login(login, password)
+        await smtp.sendmail(msg['From'], recipients_emails, msg.as_string())
     except Exception as ex:
         print(ex)
     finally:
-        smtp.quit()
+        await smtp.quit()
