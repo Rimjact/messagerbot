@@ -3,7 +3,7 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.header import Header
 
-from config import EMAIL_LOGIN, EMAIL_PASSWORD
+from config import EMAIL_SMTP, EMAIL_LOGIN, EMAIL_PASSWORD
 
 async def async_send_mail(recipients_emails: list, header: str, msg: str) -> None:
     login = EMAIL_LOGIN
@@ -14,7 +14,7 @@ async def async_send_mail(recipients_emails: list, header: str, msg: str) -> Non
     msg['From'] = login
     msg['To'] = ', '.join(recipients_emails)
 
-    smtp = aiosmtplib.SMTP('smtp.yandex.ru', 587, timeout=10)
+    smtp = aiosmtplib.SMTP(EMAIL_SMTP, 587, timeout=10)
     await smtp.connect()
     try:
         await smtp.starttls()
