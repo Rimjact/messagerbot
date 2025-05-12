@@ -1,4 +1,5 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
 KEYBOARD_START_DATA = (
@@ -7,8 +8,8 @@ KEYBOARD_START_DATA = (
 )
 
 
-def create_inline_keyboard_start() -> InlineKeyboardMarkup:
-    '''Создаёт и возвращает стартовую клавиатуру.
+async def create_inline_keyboard_start_async() -> InlineKeyboardMarkup:
+    '''Асинхронный метод, который создаёт и возвращает стартовую клавиатуру.
 
     Returns
     -------
@@ -16,8 +17,8 @@ def create_inline_keyboard_start() -> InlineKeyboardMarkup:
         главная клавиатура
     '''
 
-    keyboard_markup = InlineKeyboardMarkup()
-    keyboard_buttons = (InlineKeyboardButton(text, callback_data=data) for text, data in KEYBOARD_START_DATA)
-    keyboard_markup.row(*keyboard_buttons)
+    keyboard = InlineKeyboardBuilder()
+    for txt, data in KEYBOARD_START_DATA:
+        keyboard.add(InlineKeyboardButton(text=txt, callback_data=data))
 
-    return keyboard_markup
+    return keyboard.adjust(2).as_markup()

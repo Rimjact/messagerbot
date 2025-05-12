@@ -6,9 +6,11 @@ name = "pypi"
 [packages]
 aiogram = "*"
 aiosmtplib = "*"
-python-dotenv = "*"
 
 [dev-packages]
 
 [requires]
 python_version = "3.13"
+
+[scripts]
+main = "python main.py"

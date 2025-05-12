@@ -22,9 +22,9 @@ async def async_send_mail(recipients_emails: list, header: str, msg: str) -> Non
         сообщение в письме.
     '''
 
-    smtp_server = getenv("EMAILSMTP")
-    login = getenv("EMAILLOGIN")
-    password = getenv("EMAILPASSWORD")
+    smtp_server = getenv("EMAIL_SMTP")
+    login = getenv("EMAIL_LOGIN")
+    password = getenv("EMAIL_PASSWORD")
 
     msg = MIMEText(f'{msg}', 'plain', 'utf-8')
     msg['Subject'] = Header(header, 'utf-8')
