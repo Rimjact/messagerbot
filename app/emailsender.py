@@ -7,6 +7,21 @@ from email.header import Header
 
 
 async def async_send_mail(recipients_emails: list, header: str, msg: str) -> None:
+    '''
+    Асинхронный метод, который формирует и выполняет отправку электронного
+    письма на указанный SMTP-сервер. В данном случае, SMTP-сервер берётся
+    из значения окружения в .env.
+
+    Parameters
+    ----------
+    recipients_emails : list
+        список получателей письма.
+    header : str
+        заголовок письма.
+    msg : str
+        сообщение в письме.
+    '''
+
     smtp_server = getenv("EMAILSMTP")
     login = getenv("EMAILLOGIN")
     password = getenv("EMAILPASSWORD")
