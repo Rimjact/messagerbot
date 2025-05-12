@@ -1,9 +1,8 @@
 import asyncio
 import logging
+
 from os import getenv
-
 from aiogram import Bot, Dispatcher
-
 from app.handlers import handler_router
 
 
