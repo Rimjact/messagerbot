@@ -1,11 +1,15 @@
+import app.keyboards as kbs
+
 from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 
-router = Router()
+handler_router = Router(name=__name__)
 
 
-@router.message(CommandStart())
+@handler_router.message(CommandStart())
 async def start(message: Message):
-    await message.reply('Hello World!')
+    await message.reply("""Добро пожаловать! Я эксперементальный бот, который занимается рассылкой сообщений
+                        зарегистрированным пользователям. Пожалуйста, выберете что-либо из пунктов ниже.""",
+                        reply_markup=kbs.create_inline_keyboard_start())

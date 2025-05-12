@@ -9,7 +9,10 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
+from app.handlers import handler_router
 
+
+## Подгружает значения из .env
 load_dotenv()
 
 ## Токен бота от BotFather
@@ -17,6 +20,7 @@ TOKEN = getenv("BOT_TOKEN")
 
 ## Диспетчер бота
 disp = Dispatcher()
+disp.include_router(handler_router)
 
 
 async def main() -> None:
