@@ -2,13 +2,13 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-async def create_inline_keyboard_start_async() -> InlineKeyboardMarkup:
+async def async_create_inline_keyboard_start() -> InlineKeyboardMarkup:
     '''Асинхронный метод, который создаёт и возвращает стартовую клавиатуру.
 
     Returns
     -------
     InlineKeyboardMarkup
-        главная клавиатура
+        стартовая клавиатура
     '''
 
     KEYBOARD_START_DATA = (
