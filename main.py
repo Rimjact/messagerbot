@@ -2,8 +2,11 @@ import asyncio
 import logging
 
 from os import getenv
+
 from aiogram import Bot, Dispatcher
+
 from app.handlers import handler_router
+from app.database.db import async_main
 
 
 TOKEN = getenv("BOT_TOKEN")
@@ -14,6 +17,8 @@ dp.include_router(handler_router)
 
 # Запуск бота
 async def main() -> None:
+    await async_main()
+
     bot = Bot(token=TOKEN)
     await dp.start_polling(bot)
 

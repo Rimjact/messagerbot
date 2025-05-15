@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 aiogram = "*"
 aiosmtplib = "*"
+sqlalchemy = "*"
+aiosqlite = "*"
 
 [dev-packages]
 
