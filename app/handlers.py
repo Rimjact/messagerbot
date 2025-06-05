@@ -8,6 +8,7 @@ from aiogram.fsm.context import FSMContext
 
 from app.states import UserRegestrationStates
 from app.strings import strings
+from app.utils import is_email_valid, is_valid_string
 from app.database.models import UserForm
 
 handlers_router = Router(name=__name__)
@@ -37,25 +38,37 @@ async def register_start(callback: CallbackQuery, state: FSMContext):
 
 @handlers_router.message(UserRegestrationStates.full_name)
 async def register_full_name(message: Message, state: FSMContext):
-    await state.update_data(full_name=message.text)
+    message_text = message.text
+
+    if not is_valid_string(message_text):
+        await message.answer(strings.get('register').get('full_name_is_not_valid'))
+        await state.set_state(UserRegestrationStates.full_name)
+        return
+
+    await state.update_data(full_name=message_text)
     await state.set_state(UserRegestrationStates.email)
     await message.answer(strings.get('register').get('email'))
 
 
 @handlers_router.message(UserRegestrationStates.email)
 async def register_email(message: Message, state: FSMContext):
-    await state.update_data(email=message.text)
+    message_text = message.text
+
+    if not is_email_valid(message_text):
+        await message.answer(strings.get('register').get('email_is_not_valid'))
+        await state.set_state(UserRegestrationStates.email)
+        return
+
+    await state.update_data(email=message_text)
 
     data = await state.get_data()
     user_id = message.from_user.id
+    user_chat_id = message.chat.id
 
-    user_form = UserForm(telegram_id=message.from_user.id, full_name=data['full_name'], email=data['email'])
+    user_form = UserForm(telegram_id=user_id, telegram_chat_id=user_chat_id, full_name=data['full_name'], email=data['email'])
 
-    error = await requests.async_create_user_form(user_form)
-    if error != '':
-        await message.answer(error)
-        return
+    await requests.async_create_user_form(user_form)
 
-    answer_format = str(strings.get('register').get('successful')).format(user_id, data['full_name'], data['email'])
+    answer_format = str(strings.get('register').get('successful')).format(user_id, user_chat_id, data['full_name'], data['email'])
     await message.answer(text=answer_format, parse_mode="Markdown")
     await state.clear()

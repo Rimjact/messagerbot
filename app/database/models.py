@@ -32,6 +32,7 @@ class UserForm(ModelBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     telegram_id = mapped_column(BigInteger, nullable=False)
+    telegram_chat_id = mapped_column(BigInteger, nullable=False)
     full_name: Mapped[str] = mapped_column(String(50), nullable=False)
     email: Mapped[str] = mapped_column(String(30), nullable=False)
 
