@@ -12,7 +12,7 @@ class ModelBase(AsyncAttrs, DeclarativeBase):
 
 class User(ModelBase):
     """Модель таблицы пользователей.\n
-    Наследует класс <code>ModelBase</code>.
+    Наследует класс <code>ModelBase</code>
     """
     __tablename__ = 'users'
 
@@ -20,7 +20,20 @@ class User(ModelBase):
     telegram_id = mapped_column(BigInteger, nullable=False)
     telegram_chat_id = mapped_column(BigInteger, nullable=False)
     full_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    email: Mapped[str] = mapped_column(String(30), nullable=True)
     group_id: Mapped[int] = mapped_column(ForeignKey('groups.id', ondelete='SET NULL'), nullable=True)
+
+
+class UserForm(ModelBase):
+    """Модель таблицы заявок пользователей.\n
+    Наследует класс <code>ModelBase</code>
+    """
+    __tablename__ = 'forms'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    telegram_id = mapped_column(BigInteger, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    email: Mapped[str] = mapped_column(String(30), nullable=False)
 
 
 class Group(ModelBase):

@@ -5,14 +5,14 @@ from os import getenv
 
 from aiogram import Bot, Dispatcher
 
-from app.handlers import handler_router
+from app.handlers import handlers_router
 from app.database.db import async_main
 
 
 TOKEN = getenv("BOT_TOKEN")
 
 dp = Dispatcher()
-dp.include_router(handler_router)
+dp.include_router(handlers_router)
 
 
 # Запуск бота

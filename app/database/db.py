@@ -8,7 +8,7 @@ from app.database.models import ModelBase
 engine = create_async_engine(getenv('DB_PATH'))
 
 
-def create_async_session() -> AsyncSession:
+def create_async_session() -> async_sessionmaker[AsyncSession]:
     """Создаёт и возвращает асинхронную сессию соединения с БД.
 
     Returns
