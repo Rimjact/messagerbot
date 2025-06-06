@@ -1,6 +1,8 @@
 import app.keyboards as kbs
 import app.database.requests as requests
 
+from os import getenv
+
 from aiogram import Router, F
 from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
@@ -9,14 +11,14 @@ from aiogram.fsm.context import FSMContext
 from app.states import UserRegestrationStates
 from app.strings import strings
 from app.utils import is_email_valid, is_valid_string
-from app.database.models import UserForm
+from app.database.models import UserForm, User
 
 handlers_router = Router(name=__name__)
 
 
 @handlers_router.message(CommandStart())
 async def start(message: Message):
-    await message.reply(strings.get('start'), reply_markup=await kbs.async_create_inline_keyboard_start(), parse_mode="Markdown")
+    await message.reply(strings.get('start'), reply_markup=await kbs.async_create_inline_keyboard_start(), parse_mode='Markdown')
 
 
 @handlers_router.callback_query(F.data == 'register')
@@ -65,10 +67,65 @@ async def register_email(message: Message, state: FSMContext):
     user_id = message.from_user.id
     user_chat_id = message.chat.id
 
-    user_form = UserForm(telegram_id=user_id, telegram_chat_id=user_chat_id, full_name=data['full_name'], email=data['email'])
+    user_form = UserForm(
+        telegram_id=user_id,
+        telegram_chat_id=user_chat_id,
+        full_name=data['full_name'],
+        email=data['email']
+    )
 
     await requests.async_create_user_form(user_form)
 
-    answer_format = str(strings.get('register').get('successful')).format(user_id, user_chat_id, data['full_name'], data['email'])
-    await message.answer(text=answer_format, parse_mode="Markdown")
+    bot = message.chat.bot
+
+    form_text_format = str(strings.get('register').get('form')).format(user_id, user_chat_id, data['full_name'], data['email'])
+
+    form_keyboard = await kbs.async_create_inline_keyboard_form(user_id)
+    await bot.send_message(getenv('ADMIN_TELEGRAM_ID'), text=form_text_format, reply_markup=form_keyboard, parse_mode='Markdown')
+
+    answer_text_format = str(strings.get('register').get('successful')).format(user_id, user_chat_id, data['full_name'], data['email'])
+    await message.answer(text=answer_text_format, parse_mode='Markdown')
+
     await state.clear()
+
+
+@handlers_router.callback_query(F.data.contains('form_accept_'))
+async def form_accepted(callback: CallbackQuery):
+    user_telegram_id = int(callback.data.split('_')[2])
+
+    user_form = await requests.async_get_user_form(user_telegram_id)
+
+    user = User(
+        telegram_id=user_form.telegram_id,
+        telegram_chat_id=user_form.telegram_chat_id,
+        full_name=user_form.full_name,
+        email=user_form.email,
+        group_id=None
+    )
+
+    await requests.async_create_user(user)
+    await requests.async_delete_user_form_object(user_form)
+
+    accepted_text_format = str(strings.get('register').get('admin_form_accepted')).format(user_form.full_name)
+    await callback.answer(accepted_text_format, parse_mode='Markdown')
+    await callback.message.answer(accepted_text_format, parse_mode='Markdown')
+    await callback.message.delete()
+
+    bot = callback.bot
+    await bot.send_message(user_form.telegram_chat_id, text=strings.get('register').get('user_form_accepted'), parse_mode='Markdown')
+
+
+@handlers_router.callback_query(F.data.contains('form_reject_'))
+async def form_rejected(callback: CallbackQuery):
+    user_telegram_id = user_telegram_id = int(callback.data.split('_')[2])
+
+    user_form: UserForm = await requests.async_get_user_form(user_telegram_id)
+    await requests.async_delete_user_form_object(user_form)
+
+    rejected_text_format = str(strings.get('register').get('admin_form_rejected')).format(user_form.full_name)
+    await callback.answer(rejected_text_format, parse_mode='Markdown')
+    await callback.message.answer(rejected_text_format, parse_mode='Markdown')
+    await callback.message.delete()
+
+    bot = callback.bot
+    await bot.send_message(user_form.telegram_chat_id, text=strings.get('register').get('user_form_rejected'), parse_mode='Markdown')

@@ -308,6 +308,7 @@ async def async_delete_user(telegram_id: BigInteger) -> str:
         пустая строка или текст ошибки
     """
 
+    error: str = ''
     async_session = create_async_session()
 
     async with async_session() as session:
@@ -336,6 +337,7 @@ async def async_delete_user_form(telegram_id: BigInteger) -> str:
         пустая строка или текст ошибки
     """
 
+    error: str = ''
     async_session = create_async_session()
 
     async with async_session() as session:
@@ -344,6 +346,34 @@ async def async_delete_user_form(telegram_id: BigInteger) -> str:
             return error
 
         user_form = await async_get_user_form(telegram_id)
+        await session.delete(user_form)
+        await session.commit()
+        return error
+
+
+async def async_delete_user_form_object(user_form: UserForm) -> str:
+    """Асинхронный метод, который удаляет заявку пользователя
+    из базы данных основываясь на заданном объекте.
+
+    Parameters
+    ----------
+    user_form : UserForm
+        объект заявки пользователя в БД
+
+    Returns
+    -------
+    str
+        пустая строка или текст ошибки
+    """
+
+    error: str = ''
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        if not await async_is_user_form_exist(user_form.telegram_id):
+            error = 'Заявку от данного пользователя не найдено'
+            return error
+
         await session.delete(user_form)
         await session.commit()
         return error
@@ -363,6 +393,7 @@ async def async_delete_group(id: int) -> str:
         пустая строка или текст ошибки
     """
 
+    error: str = ''
     async_session = create_async_session()
 
     async with async_session() as session:
