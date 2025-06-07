@@ -1,5 +1,5 @@
 from sqlalchemy import select, update
-from sqlalchemy import BigInteger
+from sqlalchemy import BigInteger, Sequence
 
 from app.database.db import create_async_session
 from app.database.models import BotProperties, UserForm, User, Group
@@ -12,7 +12,7 @@ async def async_get_bot_properties() -> BotProperties:
     Returns
     -------
     BotProperties
-        текущее параметры бота
+        объект текущих параметров бота
     """
 
     async_session = create_async_session()
@@ -34,7 +34,7 @@ async def async_get_user(telegram_id: BigInteger) -> User:
     Returns
     -------
     User
-        экземпляр класса с информацией о пользователе
+        объект пользователя из БД
     """
 
     async_session = create_async_session()
@@ -50,8 +50,8 @@ async def async_get_all_users():
 
     Returns
     -------
-    list
-        массив данных о пользователях
+    Sequence[User]
+        массив объектов пользователей группы из БД
     """
 
     async_session = create_async_session()
@@ -73,8 +73,8 @@ async def async_get_all_users_from_group(group_id: int):
 
     Returns
     -------
-    list
-        массив данных о пользователях группы
+    Sequence[User]
+        массив объектов пользователей группы из БД
     """
 
     async_session = create_async_session()
@@ -98,7 +98,7 @@ async def async_get_user_form(telegram_id: BigInteger) -> UserForm:
     Returns
     -------
     UserForm
-        экземпляр класса с информацией о заявке пользователя с БД
+        объект заявки пользователя из БД
     """
 
     async_session = create_async_session()
@@ -110,7 +110,7 @@ async def async_get_user_form(telegram_id: BigInteger) -> UserForm:
 
 async def async_get_group(id: int) -> Group:
     """Асинхронный метод, который получает экземпляр данных о группе
-    из базы данных по его идентификатору.
+    из базы данных по её идентификатору.
 
     Parameters
     ----------
@@ -120,7 +120,7 @@ async def async_get_group(id: int) -> Group:
     Returns
     -------
     Group
-        экземпляр класса с информацией о группе
+        объект группы из БД
     """
 
     async_session = create_async_session()
@@ -131,8 +131,8 @@ async def async_get_group(id: int) -> Group:
 
 
 async def async_get_group_by_name(name: str) -> Group:
-    """Асинхронный метод, который получает экземпляр данных о группе
-    из базы данных по его имени.
+    """Асинхронный метод, который возвращает экземпляр данных о группе
+    из базы данных по её имени.
 
     Parameters
     ----------
@@ -142,7 +142,7 @@ async def async_get_group_by_name(name: str) -> Group:
     Returns
     -------
     Group
-        экземпляр класса с информацией о группе
+        объект группы из БД
     """
 
     async_session = create_async_session()
@@ -150,6 +150,47 @@ async def async_get_group_by_name(name: str) -> Group:
     async with async_session() as session:
         group = await session.scalar(select(Group).where(Group.name == name))
         return group
+
+
+async def async_get_group_by_id_or_name(id_or_name: str) -> Group:
+    """Асинхронный метод, который возвращает экземпляр группы
+    по её идентификатору или имени.
+
+    Parameters
+    ----------
+    id_or_name : str
+        идентификатор или имя группы
+
+    Returns
+    -------
+    Group
+        объект группы из БД
+    """
+
+    if id_or_name.isdigit():
+        group_id = int(id_or_name)
+        return await async_get_group(group_id)
+
+    group_name = id_or_name
+    return await async_get_group_by_name(group_name)
+
+
+async def async_get_groups_all():
+    """Асинхронный метод, который возвращает экземпляры всех групп
+    из базы данных.
+
+    Returns
+    -------
+    Sequence[User]
+        массив объектов всех групп из БД
+    """
+
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        result = await session.execute(select(Group))
+        groups = result.scalars().all()
+        return groups
 
 
 async def async_is_user_exist(telegram_id: BigInteger) -> bool:
@@ -315,12 +356,34 @@ async def async_create_group(group: Group) -> str:
 async def async_update_bot_properites(new_properties: BotProperties) -> None:
     """Асинхронный метод, который заменяет
     параметры бота в базе данных на новые.
+
+    Parameters
+    ----------
+    new_properties : BotProperties
+        объект параметров бота
     """
 
     async_session = create_async_session()
 
     async with async_session() as session:
         await session.merge(new_properties)
+        await session.commit()
+
+
+async def async_update_group(group: Group) -> None:
+    """Асинхронный метод, который заменяет
+    объект группы в базе данных на новый.
+
+    Parameters
+    ----------
+    group : Group
+        объект группы
+    """
+
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        await session.merge(group)
         await session.commit()
 
 
@@ -433,6 +496,34 @@ async def async_delete_group(id: int) -> str:
             return error
 
         group = await async_get_group(id)
+        await session.delete(group)
+        await session.commit()
+        return error
+
+
+async def async_delete_group_from_object(group: Group) -> str:
+    """Асинхронный метод, который удаляет группу из БД,
+    используя её объект.
+
+    Parameters
+    ----------
+    group : Group
+        объект группы
+
+    Returns
+    -------
+    str
+        пустая строка или текст ошибки
+    """
+
+    error: str = ''
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        if not await async_is_group_exist(group.id):
+            error = 'Группа с таким идентификатором не найдена'
+            return error
+
         await session.delete(group)
         await session.commit()
         return error

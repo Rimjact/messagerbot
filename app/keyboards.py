@@ -73,6 +73,11 @@ async def async_create_inline_keyboard_start() -> InlineKeyboardMarkup:
 async def async_create_inline_keyboard_form(user_telegram_id: BigInteger) -> InlineKeyboardMarkup:
     """Асинхронный метод, который возвращает клавиатуру для анкеты.
 
+    Parameters
+    ----------
+    user_telegram_id : BigInteger
+        уникальный идентификатор пользователя, который отправил заявку
+
     Returns
     -------
     InlineKeyboardMarkup
@@ -85,6 +90,26 @@ async def async_create_inline_keyboard_form(user_telegram_id: BigInteger) -> Inl
     )
 
     return await async_create_inline_keyboard(KEYBOARD_FORM_DATA, 2)
+
+
+async def async_create_inline_keyboard_manage_groups() -> InlineKeyboardMarkup:
+    """Асинхронный метод, который возвращяет клавиатуру управления группами.
+
+    Returns
+    -------
+    InlineKeyboardMarkup
+        клавиатура управления группами
+    """
+
+    KEYBOARD_MANAGE_GROUPS_DATA = (
+        ('➕Добавить новую', 'manages_groups_add_new'),
+        ('➖Удалить существующую', 'manage_groups_delete'),
+        ('✏Изменить название', 'manage_groups_change_name'),
+        ('📄Вывести список групп', 'manage_groups_list'),
+    )
+
+    return await async_create_inline_keyboard(KEYBOARD_MANAGE_GROUPS_DATA, 1)
+
 
 
 async def async_create_reply_keyboard_admin() -> ReplyKeyboardMarkup:

@@ -1,4 +1,5 @@
 import app.database.requests as requests
+import app.keyboards as kbs
 
 from os import getenv
 
@@ -7,11 +8,10 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from app.keyboards import async_create_reply_keyboard_admin, async_create_inline_keyboard_start, async_create_inline_keyboard_form
-from app.states import UserRegestrationStates
+from app.states import UserRegestrationStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
 from app.strings import strings
-from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, user_is_admin
-from app.database.models import UserForm, User
+from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, user_is_admin
+from app.database.models import UserForm, User, Group
 
 handlers_router = Router(name=__name__)
 
@@ -21,14 +21,14 @@ async def start(message: Message):
     if user_is_admin(message.from_user.id):
         await message.reply(
             text=strings.get('start_admin'),
-            reply_markup=await async_create_reply_keyboard_admin(),
+            reply_markup=await kbs.async_create_reply_keyboard_admin(),
             parse_mode='Markdown',
         )
         return
 
     await message.reply(
         strings.get('start_user'),
-        reply_markup=await async_create_inline_keyboard_start(),
+        reply_markup=await kbs.async_create_inline_keyboard_start(),
         parse_mode='Markdown',
     )
 
@@ -96,7 +96,7 @@ async def register_email(message: Message, state: FSMContext):
 
     form_text_format = str(strings.get('register').get('form')).format(user_id, user_chat_id, data['full_name'], data['email'])
 
-    form_keyboard = await async_create_inline_keyboard_form(user_id)
+    form_keyboard = await kbs.async_create_inline_keyboard_form(user_id)
     await bot.send_message(getenv('ADMIN_TELEGRAM_ID'), text=form_text_format, reply_markup=form_keyboard, parse_mode='Markdown')
 
     answer_text_format = str(strings.get('register').get('successful')).format(user_id, user_chat_id, data['full_name'], data['email'])
@@ -147,6 +147,147 @@ async def form_rejected(callback: CallbackQuery):
     await bot.send_message(user_form.telegram_chat_id, text=strings.get('register').get('user_form_rejected'), parse_mode='Markdown')
 
 
+@handlers_router.message(F.text == '📝Управление группами')
+async def groups_manage(message: Message):
+    if not user_is_admin(message.from_user.id):
+        return
+
+    await message.answer(text=strings.get('admin').get('groups_manage'), reply_markup=await kbs.async_create_inline_keyboard_manage_groups(), parse_mode='Markdown')
+    await message.delete()
+
+
+@handlers_router.callback_query(F.data == 'manages_groups_add_new')
+async def groups_add_new_group_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('groups_add_new'))
+    await callback.message.answer(strings.get('admin').get('groups_add_new_name'))
+    await callback.message.delete()
+    await state.set_state(GroupAddNewStates.name)
+
+
+@handlers_router.message(GroupAddNewStates.name)
+async def groups_add_new_group_complete(message: Message, state: FSMContext):
+    group_name = message.text
+
+    if not is_valid_string(group_name):
+        await message.answer(strings.get('admin').get('groups_name_invalid'))
+        await state.set_state(GroupAddNewStates.name)
+        return
+
+    if await requests.async_is_group_exist_by_name(group_name):
+        await message.answer(strings.get('admin').get('groups_add_new_already_exist'))
+        await state.set_state(GroupAddNewStates.name)
+        return
+
+    await state.update_data(name=group_name)
+
+    data = await state.get_data()
+    group = Group(
+        name=data['name']
+    )
+
+    await requests.async_create_group(group)
+    answer_text_format = str(strings.get('admin').get('groups_add_new_complete')).format(data['name'])
+    await message.answer(answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin())
+
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'manage_groups_delete')
+async def groups_delete_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('groups_delete'))
+    await callback.message.answer(strings.get('admin').get('groups_delete_by_id_or_name'))
+    await callback.message.delete()
+    await state.set_state(GroupDeleteStates.id_or_name)
+
+
+@handlers_router.message(GroupDeleteStates.id_or_name)
+async def groups_delete_complete(message: Message, state: FSMContext):
+    if not is_valid_string_for_group_find(message.text):
+        await message.answer(strings.get('admin').get('groups_id_or_name_invalid'))
+        await state.set_state(GroupDeleteStates.id_or_name)
+        return
+
+    await state.update_data(id_or_name=message.text)
+
+    data = await state.get_data()
+    id_or_name = str(data['id_or_name'])
+
+    group = await requests.async_get_group_by_id_or_name(id_or_name)
+
+    if not group:
+        await message.answer(text=strings.get('admin').get('groups_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
+        return
+
+    await requests.async_delete_group_from_object(group)
+
+    answer_text_format = str(strings.get('admin').get('groups_delete_complete')).format(id_or_name)
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin())
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'manage_groups_change_name')
+async def groups_change_name(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('groups_change_name'))
+    await callback.message.answer(strings.get('admin').get('groups_change_name_id_or_name'))
+    await callback.message.delete()
+    await state.set_state(GroupChangeNameStates.id_or_name)
+
+
+@handlers_router.message(GroupChangeNameStates.id_or_name)
+async def groups_change_name_id_or_name(message: Message, state: FSMContext):
+    msg_text = message.text
+
+    if not is_valid_string_for_group_find(msg_text):
+        await message.answer(strings.get('admin').get('groups_id_or_name_invalid'))
+        state.set_state(GroupChangeNameStates.id_or_name)
+        return
+
+    await message.answer(strings.get('admin').get('groups_change_name_new_name'))
+    await state.update_data(id_or_name=msg_text)
+    await state.set_state(GroupChangeNameStates.new_name)
+
+
+@handlers_router.message(GroupChangeNameStates.new_name)
+async def groups_change_name_new_name(message: Message, state: FSMContext):
+    msg_text = message.text
+
+    if not is_valid_string(msg_text):
+        await message.answer(strings.get('admin').get('groups_name_invalid'))
+        state.set_state(GroupChangeNameStates.new_name)
+        return
+
+    await state.update_data(new_name=msg_text)
+
+    data = await state.get_data()
+    id_or_name = str(data['id_or_name'])
+
+    group = await requests.async_get_group_by_id_or_name(id_or_name)
+
+    if not group:
+        await message.answer(text=strings.get('admin').get('groups_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
+        return
+
+    group.name = data['new_name']
+    await requests.async_update_group(group)
+
+    answer_text_format = str(strings.get('admin').get('groups_change_name_complete')).format(id_or_name, data['new_name'])
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin())
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'manage_groups_list')
+async def groups_view_list(callback: CallbackQuery):
+    groups = await requests.async_get_groups_all()
+
+    groups_list_text = strings.get('admin').get('groups_view_all')
+    for group in groups:
+        groups_list_text += f'*{group.id}*  {group.name}\n'
+
+    await callback.answer('Вы сделали запрос на вывод списка групп')
+    await callback.message.answer(text=groups_list_text, reply_markup=await kbs.async_create_reply_keyboard_admin(), parse_mode='Markdown')
+    await callback.message.delete()
+
+
 @handlers_router.message(F.text == '⛔Заблокировать подачу новых заявок')
 async def block_acceptance_of_forms(message: Message):
     if not user_is_admin(message.from_user.id):
@@ -156,7 +297,7 @@ async def block_acceptance_of_forms(message: Message):
     bot_properties.acceptance_of_forms_blocked = True
     await requests.async_update_bot_properites(bot_properties)
 
-    await message.answer(strings.get('admin').get('block_acceptance_of_forms'), reply_markup=await async_create_reply_keyboard_admin())
+    await message.answer(strings.get('admin').get('block_acceptance_of_forms'), reply_markup=await kbs.async_create_reply_keyboard_admin())
     await message.delete()
 
 
@@ -169,5 +310,5 @@ async def block_acceptance_of_forms(message: Message):
     bot_properties.acceptance_of_forms_blocked = False
     await requests.async_update_bot_properites(bot_properties)
 
-    await message.answer(strings.get('admin').get('unblock_acceptance_of_forms'), reply_markup=await async_create_reply_keyboard_admin())
+    await message.answer(strings.get('admin').get('unblock_acceptance_of_forms'), reply_markup=await kbs.async_create_reply_keyboard_admin())
     await message.delete()
