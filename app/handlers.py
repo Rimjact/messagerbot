@@ -1,4 +1,3 @@
-import app.keyboards as kbs
 import app.database.requests as requests
 
 from os import getenv
@@ -8,9 +7,10 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
+from app.keyboards import async_create_reply_keyboard_admin, async_create_inline_keyboard_start, async_create_inline_keyboard_form
 from app.states import UserRegestrationStates
 from app.strings import strings
-from app.utils import is_email_valid, is_valid_string
+from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, user_is_admin
 from app.database.models import UserForm, User
 
 handlers_router = Router(name=__name__)
@@ -18,7 +18,19 @@ handlers_router = Router(name=__name__)
 
 @handlers_router.message(CommandStart())
 async def start(message: Message):
-    await message.reply(strings.get('start'), reply_markup=await kbs.async_create_inline_keyboard_start(), parse_mode='Markdown')
+    if user_is_admin(message.from_user.id):
+        await message.reply(
+            text=strings.get('start_admin'),
+            reply_markup=await async_create_reply_keyboard_admin(),
+            parse_mode='Markdown',
+        )
+        return
+
+    await message.reply(
+        strings.get('start_user'),
+        reply_markup=await async_create_inline_keyboard_start(),
+        parse_mode='Markdown',
+    )
 
 
 @handlers_router.callback_query(F.data == 'register')
@@ -31,6 +43,10 @@ async def register_start(callback: CallbackQuery, state: FSMContext):
 
     if await requests.async_is_user_form_exist(user_id):
         await callback.answer(strings.get('register').get('user_form_exist'))
+        return
+
+    if await async_is_acceptance_of_forms_blocked():
+        await callback.answer(strings.get('register').get('acceptance_of_forms_blocked'))
         return
 
     await callback.answer(strings.get('register').get('start'))
@@ -80,7 +96,7 @@ async def register_email(message: Message, state: FSMContext):
 
     form_text_format = str(strings.get('register').get('form')).format(user_id, user_chat_id, data['full_name'], data['email'])
 
-    form_keyboard = await kbs.async_create_inline_keyboard_form(user_id)
+    form_keyboard = await async_create_inline_keyboard_form(user_id)
     await bot.send_message(getenv('ADMIN_TELEGRAM_ID'), text=form_text_format, reply_markup=form_keyboard, parse_mode='Markdown')
 
     answer_text_format = str(strings.get('register').get('successful')).format(user_id, user_chat_id, data['full_name'], data['email'])
@@ -129,3 +145,29 @@ async def form_rejected(callback: CallbackQuery):
 
     bot = callback.bot
     await bot.send_message(user_form.telegram_chat_id, text=strings.get('register').get('user_form_rejected'), parse_mode='Markdown')
+
+
+@handlers_router.message(F.text == '⛔Заблокировать подачу новых заявок')
+async def block_acceptance_of_forms(message: Message):
+    if not user_is_admin(message.from_user.id):
+        return
+
+    bot_properties = await requests.async_get_bot_properties()
+    bot_properties.acceptance_of_forms_blocked = True
+    await requests.async_update_bot_properites(bot_properties)
+
+    await message.answer(strings.get('admin').get('block_acceptance_of_forms'), reply_markup=await async_create_reply_keyboard_admin())
+    await message.delete()
+
+
+@handlers_router.message(F.text == '✅Разблокировать подачу новых заявок')
+async def block_acceptance_of_forms(message: Message):
+    if not user_is_admin(message.from_user.id):
+        return
+
+    bot_properties = await requests.async_get_bot_properties()
+    bot_properties.acceptance_of_forms_blocked = False
+    await requests.async_update_bot_properites(bot_properties)
+
+    await message.answer(strings.get('admin').get('unblock_acceptance_of_forms'), reply_markup=await async_create_reply_keyboard_admin())
+    await message.delete()

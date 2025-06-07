@@ -10,6 +10,16 @@ class ModelBase(AsyncAttrs, DeclarativeBase):
     pass
 
 
+class BotProperties(ModelBase):
+    """Модель таблицы настроек бота.\n
+    Наследует класс <code>ModelBase</code>
+    """
+    __tablename__ = 'properites'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    acceptance_of_forms_blocked: Mapped[bool] = mapped_column(nullable=False)
+
+
 class User(ModelBase):
     """Модель таблицы пользователей.\n
     Наследует класс <code>ModelBase</code>
@@ -20,7 +30,7 @@ class User(ModelBase):
     telegram_id = mapped_column(BigInteger, nullable=False)
     telegram_chat_id = mapped_column(BigInteger, nullable=False)
     full_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    email: Mapped[str] = mapped_column(String(30), nullable=True)
+    email: Mapped[str] = mapped_column(String(30), nullable=False)
     group_id: Mapped[int] = mapped_column(ForeignKey('groups.id', ondelete='SET NULL'), nullable=True)
 
 

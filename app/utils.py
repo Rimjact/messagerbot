@@ -1,7 +1,29 @@
 import re
 
+from os import getenv
+
+from pprint import pprint
+
+from sqlalchemy import BigInteger
+
+from app.database.requests import async_get_bot_properties
+
+
 EMAIL_REGEX = re.compile(r'^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$')
 STRING_REGEX = re.compile(r'^[\u0400-\u04FF\s]+$')
+
+
+async def async_is_acceptance_of_forms_blocked() -> bool:
+    """Проверяет, заблокирован ли на данный момент
+    приём новых заявок на регистрацию от пользователей.
+
+    Returns
+    -------
+    True если заблокирован, иначе False
+    """
+
+    bot_properties = await async_get_bot_properties()
+    return bool(bot_properties.acceptance_of_forms_blocked)
 
 
 def is_email_valid(email: str) -> bool:
@@ -40,3 +62,20 @@ def is_valid_string(string: str) -> bool:
 
     return bool(STRING_REGEX.match(string))
 
+
+def user_is_admin(user_telegram_id: int) -> bool:
+    """Проверяет, является ли пользователь с указанным
+    уникальным идентификатором Telegram администратором бота.
+
+    Parameters
+    ----------
+    user_telegram_id : int
+        идентификатор пользователя Telegram
+
+    Returns
+    -------
+    bool
+        True если является, иначе False
+    """
+
+    return user_telegram_id == int(getenv('ADMIN_TELEGRAM_ID'))

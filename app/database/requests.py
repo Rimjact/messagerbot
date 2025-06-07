@@ -1,13 +1,30 @@
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update
 from sqlalchemy import BigInteger
 
 from app.database.db import create_async_session
-from app.database.models import UserForm, User, Group
+from app.database.models import BotProperties, UserForm, User, Group
+
+
+async def async_get_bot_properties() -> BotProperties:
+    """Асинхронный метод, который получает экземпляр
+    текущих параметров бота из БД.
+
+    Returns
+    -------
+    BotProperties
+        текущее параметры бота
+    """
+
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        properties = await session.scalar(select(BotProperties))
+        return properties
 
 
 async def async_get_user(telegram_id: BigInteger) -> User:
-    """Асинхронный метод, который получает экземпляр данных о пользователе
-    из базы данных по его идентификатору Telegram.
+    """Асинхронный метод, который получает экземпляр данных
+    о пользователе из базы данных по его идентификатору Telegram.
 
     Parameters
     ----------
@@ -40,7 +57,8 @@ async def async_get_all_users():
     async_session = create_async_session()
 
     async with async_session() as session:
-        users = await session.scalars(select(User)).all()
+        result = await session.execute(select(User))
+        users = result.scalars().all()
         return users
 
 
@@ -63,7 +81,8 @@ async def async_get_all_users_from_group(group_id: int):
 
     async with async_session() as session:
         statement = select(User).where(User.group_id == group_id)
-        users = await session.scalars(statement).all()
+        result = await session.execute(statement)
+        users = result.scalars().all()
         return users
 
 
@@ -291,6 +310,18 @@ async def async_create_group(group: Group) -> str:
         session.add(group)
         await session.commit()
         return error
+
+
+async def async_update_bot_properites(new_properties: BotProperties) -> None:
+    """Асинхронный метод, который заменяет
+    параметры бота в базе данных на новые.
+    """
+
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        await session.merge(new_properties)
+        await session.commit()
 
 
 async def async_delete_user(telegram_id: BigInteger) -> str:
