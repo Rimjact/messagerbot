@@ -8,7 +8,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from app.states import UserRegestrationStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
+from app.states import UserRegestrationStates, UserChangeDataStates, UserChangeGroupStates, UserDeleteStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
 from app.strings import strings
 from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, user_is_admin
 from app.database.models import UserForm, User, Group
@@ -147,6 +147,206 @@ async def form_rejected(callback: CallbackQuery):
     await bot.send_message(user_form.telegram_chat_id, text=strings.get('register').get('user_form_rejected'), parse_mode='Markdown')
 
 
+@handlers_router.message(F.text == '🧍‍♂️🧍‍♀️Управление пользователями')
+async def users_manage(message: Message):
+    if not user_is_admin(message.from_user.id):
+        return
+
+    await message.answer(text=strings.get('admin').get('users_manage'), reply_markup=await kbs.async_create_inline_keyboard_manage_users(), parse_mode='Markdown')
+    await message.delete()
+
+
+@handlers_router.callback_query(F.data == 'manage_users_change_data')
+async def users_change_data(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('users_change_data'))
+    await callback.message.answer(strings.get('admin').get('users_id'))
+    await callback.message.delete()
+    await state.set_state(UserChangeDataStates.user_telegram_id)
+
+
+@handlers_router.message(UserChangeDataStates.user_telegram_id)
+async def users_change_data_id(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not msg_text.isdigit():
+        await message.answer(strings.get('admin').get('users_id_invalid'))
+        await state.set_state(UserChangeDataStates.user_telegram_id)
+        return
+
+    user_telegram_id = int(msg_text)
+    await state.update_data(user_telegram_id=user_telegram_id)
+
+    await message.answer(strings.get('admin').get('users_change_data_full_name'))
+    await state.set_state(UserChangeDataStates.full_name)
+
+
+@handlers_router.message(UserChangeDataStates.full_name)
+async def users_change_data_name(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not is_valid_string(msg_text):
+        await message.answer(strings.get('admin').get('users_change_data_full_name_invalid'))
+        await state.set_state(UserChangeDataStates.full_name)
+        return
+
+    await state.update_data(full_name=msg_text)
+
+    await message.answer(strings.get('admin').get('users_change_data_email'))
+    await state.set_state(UserChangeDataStates.email)
+
+
+@handlers_router.message(UserChangeDataStates.email)
+async def user_changes_data_email(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not is_email_valid(msg_text):
+        await message.answer(strings.get('admin').get('users_change_data_email_invalid'))
+        await state.set_state(UserChangeDataStates.email)
+        return
+
+    await state.update_data(email=msg_text)
+
+    data = await state.get_data()
+    user_telegram_id = data['user_telegram_id']
+    user_full_name = data['full_name']
+    user_email = data['email']
+
+    if not await requests.async_is_user_exist(user_telegram_id):
+        await message.answer(strings.get('admin').get('users_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admins())
+        await state.clear()
+        return
+
+    user = await requests.async_get_user(user_telegram_id)
+    user.full_name = user_full_name
+    user.email = user_email
+
+    await requests.async_update_user(user)
+
+    answer_text_format = str(strings.get('admin').get('users_change_data_complete')).format(user_telegram_id, user_full_name, user_email)
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admins(), parse_mode='Markdown')
+
+    answer_user_text_format = str(strings.get('admin').get('users_change_data_complete_user')).format(user_full_name, user_email)
+    await message.bot.send_message(user_telegram_id, text=answer_user_text_format, parse_mode='Markdown')
+
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'manage_users_change_group')
+async def users_change_group(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('users_change_group'))
+    await callback.message.answer(strings.get('admin').get('users_id'))
+    await callback.message.delete()
+    await state.set_state(UserChangeGroupStates.user_telegram_id)
+
+
+@handlers_router.message(UserChangeGroupStates.user_telegram_id)
+async def user_change_group_user_id(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not msg_text.isdigit():
+        await message.answer(strings.get('admin').get('users_id_invalid'))
+        await state.set_state(UserChangeGroupStates.user_telegram_id)
+        return
+
+    user_telegram_id = int(msg_text)
+    await state.update_data(user_telegram_id=user_telegram_id)
+
+    await message.answer(strings.get('admin').get('users_change_group_id'))
+    await state.set_state(UserChangeGroupStates.group_id)
+
+
+@handlers_router.message(UserChangeGroupStates.group_id)
+async def user_change_group_complete(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not msg_text.isdigit():
+        await message.answer(strings.get('admin').get('users_change_group_id_invalid'))
+        await state.set_state(UserChangeGroupStates.group_id)
+        return
+
+    group_id = int(msg_text)
+    await state.update_data(group_id=group_id)
+
+    data = await state.get_data()
+    user_telegram_id = data['user_telegram_id']
+    user_group_id = data['group_id']
+
+    if not await requests.async_is_user_exist(user_telegram_id):
+        await message.answer(strings.get('admin').get('users_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
+        await state.clear()
+        return
+
+    if not await requests.async_is_group_exist(user_group_id):
+        await message.answer(strings.get('admin').get('groups_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
+        await state.clear()
+        return
+
+    user = await requests.async_get_user(user_telegram_id)
+    user.group_id = user_group_id
+    await requests.async_update_user(user)
+
+    group_name = await requests.async_get_group_name(user_group_id)
+
+    anwer_text_format = str(strings.get('admin').get('users_change_group_complete')).format(user_telegram_id, group_name)
+    await message.answer(text=anwer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin())
+
+    answer_user_text_format = str(strings.get('admin').get('users_change_data_complete_user')).format(group_name)
+    await message.bot.send_message(user_telegram_id, text=answer_user_text_format, parse_mode='Markdown')
+
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'manage_users_delete')
+async def user_delete_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('users_delete'))
+    await callback.message.answer(strings.get('admin').get('users_id'))
+    await callback.message.delete()
+    await state.set_state(UserDeleteStates.user_telegram_id)
+
+
+@handlers_router.message(UserDeleteStates.user_telegram_id)
+async def user_delete_complete(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not msg_text.isdigit():
+        await message.answer(strings.get('admin').get('users_id_invalid'))
+        await state.set_state(UserDeleteStates.user_telegram_id)
+        return
+
+    await state.update_data(user_telegram_id=int(msg_text))
+
+    data = await state.get_data()
+    user_telegram_id = data['user_telegram_id']
+
+    if not await requests.async_is_user_exist(user_telegram_id):
+        await message.answer(strings.get('admin').get('users_not_found'))
+        await state.clear()
+        return
+
+    user = await requests.async_get_user(user_telegram_id)
+    await requests.async_delete_user_from_object(user)
+
+    answer_text_format = str(strings.get('admin').get('users_delete_complete')).format(user_telegram_id)
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin())
+
+    await message.bot.send_message(user_telegram_id, text=strings.get('admin').get('users_delete_complete_user'), parse_mode='Markdown')
+    await state.clear()
+
+
+
+@handlers_router.callback_query(F.data == 'manage_users_list')
+async def users_veiw_list(callback: CallbackQuery):
+    users = await requests.async_get_users_all()
+
+    users_list_text = strings.get('admin').get('users_view_all')
+    for user in users:
+        users_list_text += f'*{user.telegram_id}*  {user.full_name}  {user.email}  {user.group_id}\n'
+
+    await callback.answer('Вы сделали запрос на вывод списка групп')
+    await callback.message.answer(text=users_list_text, reply_markup=await kbs.async_create_reply_keyboard_admin(), parse_mode='Markdown')
+    await callback.message.delete()
+
+
 @handlers_router.message(F.text == '📝Управление группами')
 async def groups_manage(message: Message):
     if not user_is_admin(message.from_user.id):
@@ -216,6 +416,7 @@ async def groups_delete_complete(message: Message, state: FSMContext):
 
     if not group:
         await message.answer(text=strings.get('admin').get('groups_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
+        await state.clear()
         return
 
     await requests.async_delete_group_from_object(group)
@@ -265,6 +466,7 @@ async def groups_change_name_new_name(message: Message, state: FSMContext):
 
     if not group:
         await message.answer(text=strings.get('admin').get('groups_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
+        await state.clear()
         return
 
     group.name = data['new_name']

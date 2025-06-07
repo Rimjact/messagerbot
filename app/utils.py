@@ -14,9 +14,6 @@ STRING_REGEX = re.compile(r'^[\u0400-\u04FF\s-]+$')
 GROUP_ID_OR_NAME_REGEX = re.compile(r'^[\u0400-\u04FF\s0-9-]+$')
 
 
-
-
-
 async def async_is_acceptance_of_forms_blocked() -> bool:
     """Проверяет, заблокирован ли на данный момент
     приём новых заявок на регистрацию от пользователей.

@@ -19,6 +19,7 @@ async def async_get_bot_properties() -> BotProperties:
 
     async with async_session() as session:
         properties = await session.scalar(select(BotProperties))
+        await session.close()
         return properties
 
 
@@ -41,10 +42,11 @@ async def async_get_user(telegram_id: BigInteger) -> User:
 
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
+        await session.close()
         return user
 
 
-async def async_get_all_users():
+async def async_get_users_all():
     """Асинхронный метод, который получает экземпляры данных
     всех пользователей из базы данных.
 
@@ -59,6 +61,7 @@ async def async_get_all_users():
     async with async_session() as session:
         result = await session.execute(select(User))
         users = result.scalars().all()
+        await session.close()
         return users
 
 
@@ -83,6 +86,7 @@ async def async_get_all_users_from_group(group_id: int):
         statement = select(User).where(User.group_id == group_id)
         result = await session.execute(statement)
         users = result.scalars().all()
+        await session.close()
         return users
 
 
@@ -105,6 +109,7 @@ async def async_get_user_form(telegram_id: BigInteger) -> UserForm:
 
     async with async_session() as session:
         user_form = await session.scalar(select(UserForm).where(UserForm.telegram_id == telegram_id))
+        await session.close()
         return user_form
 
 
@@ -127,6 +132,7 @@ async def async_get_group(id: int) -> Group:
 
     async with async_session() as session:
         group = await session.scalar(select(Group).where(Group.id == id))
+        await session.close()
         return group
 
 
@@ -149,6 +155,7 @@ async def async_get_group_by_name(name: str) -> Group:
 
     async with async_session() as session:
         group = await session.scalar(select(Group).where(Group.name == name))
+        await session.close()
         return group
 
 
@@ -190,7 +197,27 @@ async def async_get_groups_all():
     async with async_session() as session:
         result = await session.execute(select(Group))
         groups = result.scalars().all()
+        await session.close()
         return groups
+
+
+async def async_get_group_name(group_id: int) -> str:
+    """Асинхронный метод, который возвращает имя группы
+    по её идентификатору в БД.
+
+    Parameters
+    ----------
+    group_id : int
+        идентификатор группы
+
+    Returns
+    -------
+    str
+        имя группы
+    """
+
+    group = await async_get_group(group_id)
+    return group.name
 
 
 async def async_is_user_exist(telegram_id: BigInteger) -> bool:
@@ -294,6 +321,7 @@ async def async_create_user(user: User) -> str:
 
         session.add(user)
         await session.commit()
+        await session.close()
         return error
 
 
@@ -322,6 +350,7 @@ async def async_create_user_form(user_form: UserForm) -> str:
 
         session.add(user_form)
         await session.commit()
+        await session.close()
         return error
 
 
@@ -350,6 +379,7 @@ async def async_create_group(group: Group) -> str:
 
         session.add(group)
         await session.commit()
+        await session.close()
         return error
 
 
@@ -368,6 +398,27 @@ async def async_update_bot_properites(new_properties: BotProperties) -> None:
     async with async_session() as session:
         await session.merge(new_properties)
         await session.commit()
+        await session.close()
+
+
+
+async def async_update_user(user: User) -> None:
+    """Асинхронный метод, который заменяет
+    объект пользователя в базе данных на новый.
+    Нужен для обновления данных.
+
+    Parameters
+    ----------
+    user : User
+        объект пользователя
+    """
+
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        await session.merge(user)
+        await session.commit()
+        await session.close()
 
 
 async def async_update_group(group: Group) -> None:
@@ -385,6 +436,7 @@ async def async_update_group(group: Group) -> None:
     async with async_session() as session:
         await session.merge(group)
         await session.commit()
+        await session.close()
 
 
 async def async_delete_user(telegram_id: BigInteger) -> str:
@@ -413,6 +465,36 @@ async def async_delete_user(telegram_id: BigInteger) -> str:
         user = await async_get_user(telegram_id)
         await session.delete(user)
         await session.commit()
+        await session.close()
+        return error
+
+
+async def async_delete_user_from_object(user: User) -> str:
+    """Асинхронный метод, который удаляет пользователя
+    из базы данных основываясь на заданном объекте.
+
+    Parameters
+    ----------
+    user : User
+        объект пользователя
+
+    Returns
+    -------
+    str
+        пустая строка или ошибка
+    """
+
+    error: str = ''
+    async_session = create_async_session()
+
+    async with async_session() as session:
+        if not await async_is_user_exist(user.telegram_id):
+            error = 'Пользователь не найден'
+            return error
+
+        await session.delete(user)
+        await session.commit()
+        await session.close()
         return error
 
 
@@ -442,6 +524,7 @@ async def async_delete_user_form(telegram_id: BigInteger) -> str:
         user_form = await async_get_user_form(telegram_id)
         await session.delete(user_form)
         await session.commit()
+        await session.close()
         return error
 
 
@@ -470,6 +553,7 @@ async def async_delete_user_form_object(user_form: UserForm) -> str:
 
         await session.delete(user_form)
         await session.commit()
+        await session.close()
         return error
 
 
@@ -498,6 +582,7 @@ async def async_delete_group(id: int) -> str:
         group = await async_get_group(id)
         await session.delete(group)
         await session.commit()
+        await session.close()
         return error
 
 
@@ -526,4 +611,5 @@ async def async_delete_group_from_object(group: Group) -> str:
 
         await session.delete(group)
         await session.commit()
+        await session.close()
         return error

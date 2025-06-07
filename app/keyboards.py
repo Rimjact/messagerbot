@@ -111,6 +111,24 @@ async def async_create_inline_keyboard_manage_groups() -> InlineKeyboardMarkup:
     return await async_create_inline_keyboard(KEYBOARD_MANAGE_GROUPS_DATA, 1)
 
 
+async def async_create_inline_keyboard_manage_users() -> InlineKeyboardMarkup:
+    """Асинхронный метод, который возвращает клавиатуру управления пользователями.
+
+    Returns
+    -------
+    InlineKeyboardMarkup
+        клавиатура управления пользователями
+    """
+
+    KEYBOARD_MANAGE_USERS_DATA = (
+        ('✏ Изменить данные', 'manage_users_change_data'),
+        ('➖ Удалить зарегистрированного', 'manage_users_delete'),
+        ('📌 Переместить в группу', 'manage_users_change_group'),
+        ('📄Вывести список пользователей', 'manage_users_list'),
+    )
+
+    return await async_create_inline_keyboard(KEYBOARD_MANAGE_USERS_DATA, 1)
+
 
 async def async_create_reply_keyboard_admin() -> ReplyKeyboardMarkup:
     """Асинхронный метод, который возвращает клавиатуру для адмнистратора.
