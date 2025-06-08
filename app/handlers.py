@@ -8,9 +8,9 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 
-from app.states import UserRegestrationStates, UserChangeDataStates, UserChangeGroupStates, UserDeleteStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
+from app.states import CreateMailingForAllUsers, CreatingMailingForUsers, CreatingMailingForGroups, UserRegestrationStates, UserChangeDataStates, UserChangeGroupStates, UserDeleteStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
 from app.strings import strings
-from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, user_is_admin
+from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, is_valid_ids_string, user_is_admin
 from app.database.models import UserForm, User, Group
 
 handlers_router = Router(name=__name__)
@@ -145,6 +145,184 @@ async def form_rejected(callback: CallbackQuery):
 
     bot = callback.bot
     await bot.send_message(user_form.telegram_chat_id, text=strings.get('register').get('user_form_rejected'), parse_mode='Markdown')
+
+
+@handlers_router.message(F.text == '✉Сформировать рассылку')
+async def make_mailing(message: Message):
+    if not user_is_admin(message.from_user.id):
+        return
+
+    await message.answer(text=strings.get('admin').get('make_mailing'), reply_markup=await kbs.async_create_inline_keyboard_make_mailing(), parse_mode='Markdown')
+    await message.delete()
+
+
+@handlers_router.callback_query(F.data == 'make_mailing_all_users')
+async def make_mailing_all_users_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('make_mailing_all_users'))
+    await callback.message.answer(strings.get('admin').get('make_mailing_message'))
+    await callback.message.delete()
+    await state.set_state(CreateMailingForAllUsers.message)
+
+
+@handlers_router.message(CreateMailingForAllUsers.message)
+async def make_mailing_all_users_complete(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if len(msg_text) < 4:
+        await message.answer(strings.get('admin').get('make_mailing_message_invalid'))
+        await state.set_state(CreateMailingForAllUsers.message)
+        return
+
+    await state.update_data(message_text=msg_text)
+
+    data = await state.get_data()
+
+    users = await requests.async_get_users_all()
+    bot = message.bot
+
+    process_message = await message.answer(strings.get('admin').get('make_mailing_complete'))
+
+    counter_success: int = 0
+    counter_not_found: int = 0
+
+    for user in users:
+        sended_message = await bot.send_message(user.telegram_id, text=data['message_text'])
+        if not sended_message:
+            counter_not_found += 1
+            continue
+
+        counter_success += 1
+
+    answer_text_format = str(strings.get('admin').get('make_mailing_complete_statistics')).format(counter_success, counter_not_found)
+    await process_message.delete()
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin(), parse_mode='Markdown')
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'make_mailing_users')
+async def make_mailing_users_start(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('make_mailing_users'))
+    await callback.message.answer(strings.get('admin').get('make_mailing_users_ids'))
+    await callback.message.delete()
+    await state.set_state(CreatingMailingForUsers.users_telegram_ids)
+
+
+@handlers_router.message(CreatingMailingForUsers.users_telegram_ids)
+async def make_mailing_users_telegram_ids(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not is_valid_ids_string(msg_text):
+        await message.answer(strings.get('admin').get('make_mailing_users_ids_invalid'))
+        await state.set_state(CreatingMailingForUsers.users_telegram_ids)
+        return
+
+    await state.update_data(users_telegram_ids=msg_text)
+
+    await message.answer(strings.get('admin').get('make_mailing_message'))
+    await state.set_state(CreatingMailingForUsers.message)
+
+
+@handlers_router.message(CreatingMailingForUsers.message)
+async def make_mailing_users_complete(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if len(msg_text) < 4:
+        await message.answer(strings.get('admin').get('make_mailing_message_invalid'))
+        await state.set_state(CreateMailingForAllUsers.message)
+        return
+
+    await state.update_data(message_text=msg_text)
+
+    data = await state.get_data()
+    users_telegram_ids_list = str(data['users_telegram_ids']).split(' ')
+
+    process_message = await message.answer(strings.get('admin').get('make_mailing_complete'))
+
+    bot = message.bot
+
+    counter_success: int = 0
+    counter_not_found: int = 0
+
+    for user_telegram_id in users_telegram_ids_list:
+        telegram_id = int(user_telegram_id)
+        if not await requests.async_is_user_exist(telegram_id):
+            counter_not_found += 1
+            continue
+
+        sended_message = await bot.send_message(telegram_id, data['message_text'])
+        if not sended_message:
+            counter_not_found += 1
+            continue
+
+        counter_success += 1
+
+    answer_text_format = str(strings.get('admin').get('make_mailing_complete_statistics')).format(counter_success, counter_not_found)
+    await process_message.delete()
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin(), parse_mode='Markdown')
+    await state.clear()
+
+
+@handlers_router.callback_query(F.data == 'make_mailing_groups')
+async def make_mailing_groups(callback: CallbackQuery, state: FSMContext):
+    await callback.answer(strings.get('admin').get('make_mailing_groups'))
+    await callback.message.answer(strings.get('admin').get('make_mailing_groups_ids'))
+    await callback.message.delete()
+    await state.set_state(CreatingMailingForGroups.groups_ids)
+
+
+@handlers_router.message(CreatingMailingForGroups.groups_ids)
+async def make_mailing_groups_ids(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if not is_valid_ids_string(msg_text):
+        await message.answer(strings.get('admin').get('make_mailing_groups_ids_invalid'))
+        await state.set_state(CreatingMailingForGroups.groups_ids)
+        return
+
+    await state.update_data(groups_ids=msg_text)
+    await message.answer(strings.get('admin').get('make_mailing_message'))
+    await state.set_state(CreatingMailingForGroups.message)
+
+
+@handlers_router.message(CreatingMailingForGroups.message)
+async def make_mailing_groups_complete(message: Message, state: FSMContext):
+    msg_text = str(message.text)
+
+    if len(msg_text) < 4:
+        await message.answer(strings.get('admin').get('make_mailing_message_invalid'))
+        await state.set_state(CreateMailingForAllUsers.message)
+        return
+
+    await state.update_data(message_text=msg_text)
+
+    data = await state.get_data()
+    groups_ids_list = str(data['groups_ids']).split(' ')
+
+    process_message = await message.answer(strings.get('admin').get('make_mailing_complete'))
+
+    bot = message.bot
+
+    counter_success: int = 0
+    counter_not_found: int = 0
+
+    for group_id in groups_ids_list:
+        group_id = int(group_id)
+        if not await requests.async_is_group_exist(group_id):
+            continue
+
+        users_in_group = await requests.async_get_all_users_from_group(group_id)
+        for user in users_in_group:
+            sended_message = await bot.send_message(user.telegram_id, data['message_text'])
+            if not sended_message:
+                counter_not_found += 1
+                continue
+
+            counter_success += 1
+
+    answer_text_format = str(strings.get('admin').get('make_mailing_complete_statistics')).format(counter_success, counter_not_found)
+    await process_message.delete()
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin(), parse_mode='Markdown')
+    await state.clear()
 
 
 @handlers_router.message(F.text == '🧍‍♂️🧍‍♀️Управление пользователями')

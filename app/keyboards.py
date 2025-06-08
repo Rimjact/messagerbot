@@ -92,6 +92,24 @@ async def async_create_inline_keyboard_form(user_telegram_id: BigInteger) -> Inl
     return await async_create_inline_keyboard(KEYBOARD_FORM_DATA, 2)
 
 
+async def async_create_inline_keyboard_make_mailing() -> InlineKeyboardMarkup:
+    """Асинхронный метод, который возвращяет клавиатуру создания рассылки.
+
+    Returns
+    -------
+    InlineKeyboardMarkup
+        клавиатура создания рассылки
+    """
+
+    KEYBOARD_MAKE_MAILING_DATA = (
+        ('📣Всем', 'make_mailing_all_users'),
+        ('🙍‍♂️Конкретным пользователям', 'make_mailing_users'),
+        ('📄Конкретным группам', 'make_mailing_groups'),
+    )
+
+    return await async_create_inline_keyboard(KEYBOARD_MAKE_MAILING_DATA, 1)
+
+
 async def async_create_inline_keyboard_manage_groups() -> InlineKeyboardMarkup:
     """Асинхронный метод, который возвращяет клавиатуру управления группами.
 

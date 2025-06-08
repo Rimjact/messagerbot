@@ -2,16 +2,13 @@ import re
 
 from os import getenv
 
-from pprint import pprint
-
-from sqlalchemy import BigInteger
-
 from app.database.requests import async_get_bot_properties
 
 
 EMAIL_REGEX = re.compile(r'^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$')
 STRING_REGEX = re.compile(r'^[\u0400-\u04FF\s-]+$')
 GROUP_ID_OR_NAME_REGEX = re.compile(r'^[\u0400-\u04FF\s0-9-]+$')
+IDS_REGEX = re.compile(r'^\d+( \d+)*$')
 
 
 async def async_is_acceptance_of_forms_blocked() -> bool:
@@ -39,7 +36,7 @@ def is_email_valid(email: str) -> bool:
     Returns
     -------
     bool
-        True если соотвествует, иначе False
+        True если соответствует, иначе False
     """
 
     return bool(EMAIL_REGEX.match(email))
@@ -58,7 +55,7 @@ def is_valid_string(string: str) -> bool:
     Returns
     -------
     bool
-        True если соотвествие, иначе False
+        True если соответствует, иначе False
     """
 
     return bool(STRING_REGEX.match(string))
@@ -67,9 +64,37 @@ def is_valid_string(string: str) -> bool:
 def is_valid_string_for_group_find(string: str) -> bool:
     """Проверяет строку на соотвествие для процедуры удаления группы,
     что она содержит только символы кириллицы, пробелы, цифры и тире.
+
+    Parameters
+    ----------
+    string : str
+        строка для проверки
+
+    Returns
+    -------
+    bool
+        True если соответствует, иначе False
     """
 
     return bool(GROUP_ID_OR_NAME_REGEX.match(string))
+
+
+def is_valid_ids_string(string: str) -> bool:
+    """Проверяет строку на соотвествие, что она содержит
+    только цифры и пробелы в строгом формате.
+
+    Parameters
+    ----------
+    string : str
+        строка для проверки
+
+    Returns
+    -------
+    bool
+        True если соответствует, иначе False
+    """
+
+    return bool(IDS_REGEX.match(string))
 
 
 def user_is_admin(user_telegram_id: int) -> bool:

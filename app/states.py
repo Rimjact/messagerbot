@@ -1,6 +1,32 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
+class CreateMailingForAllUsers(StatesGroup):
+    """Класс группы состояний для процедуры создания рассылки пользователям.\n
+    Наследует <code>StatesGroup</code>
+    """
+
+    message = State()
+
+
+class CreatingMailingForUsers(StatesGroup):
+    """Класс группы состояний для процедуры создания рассылки пользователям.\n
+    Наследует <code>StatesGroup</code>
+    """
+
+    users_telegram_ids = State()
+    message = State()
+
+
+class CreatingMailingForGroups(StatesGroup):
+    """Класс группы состояний для процедуры создания рассылки группам.\n
+    Наследует <code>StatesGroup</code>
+    """
+
+    groups_ids = State()
+    message = State()
+
+
 class UserRegestrationStates(StatesGroup):
     """Класс группы состояний для процедуры регистрации пользователя.\n
     Наследует <code>StatesGroup</code>
