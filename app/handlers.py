@@ -12,6 +12,7 @@ from app.states import CreateMailingForAllUsers, CreatingMailingForUsers, Creati
 from app.strings import strings
 from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, is_valid_ids_string, user_is_admin
 from app.database.models import UserForm, User, Group
+from app.emailsender import async_send_mail
 
 handlers_router = Router(name=__name__)
 
@@ -185,13 +186,19 @@ async def make_mailing_all_users_complete(message: Message, state: FSMContext):
     counter_success: int = 0
     counter_not_found: int = 0
 
+    users_emails = list()
+
     for user in users:
         sended_message = await bot.send_message(user.telegram_id, text=data['message_text'])
         if not sended_message:
             counter_not_found += 1
             continue
 
+        users_emails.append(user.email)
         counter_success += 1
+
+
+    await async_send_mail(users_emails, 'STI MESSAGER BOT', data['message_text'])
 
     answer_text_format = str(strings.get('admin').get('make_mailing_complete_statistics')).format(counter_success, counter_not_found)
     await process_message.delete()
@@ -240,21 +247,28 @@ async def make_mailing_users_complete(message: Message, state: FSMContext):
 
     bot = message.bot
 
+    users_emails = list()
+
     counter_success: int = 0
     counter_not_found: int = 0
 
     for user_telegram_id in users_telegram_ids_list:
-        telegram_id = int(user_telegram_id)
-        if not await requests.async_is_user_exist(telegram_id):
+        user_telegram_id = int(user_telegram_id)
+        if not await requests.async_is_user_exist(user_telegram_id):
             counter_not_found += 1
             continue
 
-        sended_message = await bot.send_message(telegram_id, data['message_text'])
+        user = await requests.async_get_user(user_telegram_id)
+
+        sended_message = await bot.send_message(user.telegram_id, data['message_text'])
         if not sended_message:
             counter_not_found += 1
             continue
 
+        users_emails.append(user.email)
         counter_success += 1
+
+    await async_send_mail(users_emails, 'STI MESSAGER BOT', data['message_text'])
 
     answer_text_format = str(strings.get('admin').get('make_mailing_complete_statistics')).format(counter_success, counter_not_found)
     await process_message.delete()
@@ -302,6 +316,8 @@ async def make_mailing_groups_complete(message: Message, state: FSMContext):
 
     bot = message.bot
 
+    users_emails = list()
+
     counter_success: int = 0
     counter_not_found: int = 0
 
@@ -317,7 +333,10 @@ async def make_mailing_groups_complete(message: Message, state: FSMContext):
                 counter_not_found += 1
                 continue
 
+            users_emails.append(user.email)
             counter_success += 1
+
+    await async_send_mail(users_emails, 'STI MESSAGER BOT', data['message_text'])
 
     answer_text_format = str(strings.get('admin').get('make_mailing_complete_statistics')).format(counter_success, counter_not_found)
     await process_message.delete()

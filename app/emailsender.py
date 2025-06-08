@@ -22,6 +22,9 @@ async def async_send_mail(recipients_emails: list, header: str, msg: str) -> Non
         сообщение в письме.
     '''
 
+    if len(recipients_emails) == 0:
+        return
+
     smtp_server = getenv("EMAIL_SMTP")
     login = getenv("EMAIL_LOGIN")
     password = getenv("EMAIL_PASSWORD")
@@ -31,10 +34,9 @@ async def async_send_mail(recipients_emails: list, header: str, msg: str) -> Non
     msg['From'] = login
     msg['To'] = ', '.join(recipients_emails)
 
-    smtp = aiosmtplib.SMTP(smtp_server, 587, timeout=10)
+    smtp = aiosmtplib.SMTP(hostname=smtp_server, port=587, timeout=10)
     await smtp.connect()
     try:
-        await smtp.starttls()
         await smtp.login(login, password)
         await smtp.sendmail(msg['From'], recipients_emails, msg.as_string())
     except Exception as ex:
