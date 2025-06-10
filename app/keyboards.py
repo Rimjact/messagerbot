@@ -64,7 +64,6 @@ async def async_create_inline_keyboard_start() -> InlineKeyboardMarkup:
 
     KEYBOARD_START_DATA = (
         ('📝 Регистрация', 'register'),
-        ('⚙ Настройки', 'settings'),
     )
 
     return await async_create_inline_keyboard(KEYBOARD_START_DATA, 2)

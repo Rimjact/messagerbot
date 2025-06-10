@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 
 from app.states import CreateMailingForAllUsers, CreatingMailingForUsers, CreatingMailingForGroups, UserRegestrationStates, UserChangeDataStates, UserChangeGroupStates, UserDeleteStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
 from app.strings import strings
-from app.utils import async_is_forms_acceptance_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, is_valid_ids_string, user_is_admin
+from app.utils import async_is_forms_acceptance_blocked, is_email_valid, is_valid_string, is_valid_full_name, is_valid_string_for_group_find, is_valid_ids_string, user_is_admin
 from app.database.models import UserForm, User, Group
 from app.emailsender import async_send_mail
 
@@ -59,7 +59,7 @@ async def register_start(callback: CallbackQuery, state: FSMContext):
 async def register_full_name(message: Message, state: FSMContext):
     message_text = message.text
 
-    if not is_valid_string(message_text):
+    if not is_valid_full_name(message_text):
         await message.answer(strings.get('register').get('full_name_is_not_valid'))
         await state.set_state(UserRegestrationStates.full_name)
         return
@@ -381,7 +381,7 @@ async def users_change_data_id(message: Message, state: FSMContext):
 async def users_change_data_name(message: Message, state: FSMContext):
     msg_text = str(message.text)
 
-    if not is_valid_string(msg_text):
+    if not is_valid_full_name(msg_text):
         await message.answer(strings.get('admin').get('users_change_data_full_name_invalid'))
         await state.set_state(UserChangeDataStates.full_name)
         return
@@ -409,7 +409,7 @@ async def user_changes_data_email(message: Message, state: FSMContext):
     user_email = data['email']
 
     if not await requests.async_is_user_exist(user_telegram_id):
-        await message.answer(strings.get('admin').get('users_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admins())
+        await message.answer(strings.get('admin').get('users_not_found'), reply_markup=await kbs.async_create_reply_keyboard_admin())
         await state.clear()
         return
 
@@ -420,7 +420,7 @@ async def user_changes_data_email(message: Message, state: FSMContext):
     await requests.async_update_user(user)
 
     answer_text_format = str(strings.get('admin').get('users_change_data_complete')).format(user_telegram_id, user_full_name, user_email)
-    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admins(), parse_mode='Markdown')
+    await message.answer(text=answer_text_format, reply_markup=await kbs.async_create_reply_keyboard_admin(), parse_mode='Markdown')
 
     answer_user_text_format = str(strings.get('admin').get('users_change_data_complete_user')).format(user_full_name, user_email)
     await message.bot.send_message(user_telegram_id, text=answer_user_text_format, parse_mode='Markdown')
@@ -693,7 +693,7 @@ async def block_acceptance_of_forms(message: Message):
         return
 
     bot_properties = await requests.async_get_bot_properties()
-    bot_properties.acceptance_of_forms_blocked = True
+    bot_properties.forms_acceptance_blocked = True
     await requests.async_update_bot_properites(bot_properties)
 
     await message.answer(strings.get('admin').get('block_acceptance_of_forms'), reply_markup=await kbs.async_create_reply_keyboard_admin())
@@ -706,7 +706,7 @@ async def block_acceptance_of_forms(message: Message):
         return
 
     bot_properties = await requests.async_get_bot_properties()
-    bot_properties.acceptance_of_forms_blocked = False
+    bot_properties.forms_acceptance_blocked = False
     await requests.async_update_bot_properites(bot_properties)
 
     await message.answer(strings.get('admin').get('unblock_acceptance_of_forms'), reply_markup=await kbs.async_create_reply_keyboard_admin())

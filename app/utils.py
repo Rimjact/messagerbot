@@ -4,9 +4,11 @@ from os import getenv
 
 from app.database.requests import async_get_bot_properties
 
+FULL_NAME_PATTERN = r'[\u0410-\u042F\u0401][\u0430-\u044F\u0451]+'
 
-EMAIL_REGEX = re.compile(r'^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]*$')
-STRING_REGEX = re.compile(r'^[\u0400-\u04FF\s-]+$')
+EMAIL_REGEX = re.compile(r'^[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]+$')
+FULL_NAME_REGEX = re.compile(fr'^{FULL_NAME_PATTERN}\s{FULL_NAME_PATTERN}(\s{FULL_NAME_PATTERN})?$')
+STRING_REGEX = re.compile(r'^[\u0400-\u04FFA-Za-z -]+$')
 GROUP_ID_OR_NAME_REGEX = re.compile(r'^[\u0400-\u04FF\s0-9-]+$')
 IDS_REGEX = re.compile(r'^\d+( \d+)*$')
 
@@ -40,6 +42,23 @@ def is_email_valid(email: str) -> bool:
     """
 
     return bool(EMAIL_REGEX.match(email))
+
+
+def is_valid_full_name(full_name: str) -> bool:
+    """Проверяет строку на соответсвие ФИО.
+
+    Parameters
+    ----------
+    full_name : str
+        строка ФИО для проверки
+
+    Returns
+    -------
+    bool
+        True если соответствует, иначе False
+    """
+
+    return bool(FULL_NAME_REGEX.match(full_name))
 
 
 def is_valid_string(string: str) -> bool:
