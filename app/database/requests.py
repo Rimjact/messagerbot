@@ -1,5 +1,5 @@
-from sqlalchemy import select, update
-from sqlalchemy import BigInteger, Sequence
+from sqlalchemy import select
+from sqlalchemy import BigInteger
 
 from app.database.db import create_async_session
 from app.database.models import BotProperties, UserForm, User, Group

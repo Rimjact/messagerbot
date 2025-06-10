@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 
 from app.states import CreateMailingForAllUsers, CreatingMailingForUsers, CreatingMailingForGroups, UserRegestrationStates, UserChangeDataStates, UserChangeGroupStates, UserDeleteStates, GroupAddNewStates, GroupDeleteStates, GroupChangeNameStates
 from app.strings import strings
-from app.utils import async_is_acceptance_of_forms_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, is_valid_ids_string, user_is_admin
+from app.utils import async_is_forms_acceptance_blocked, is_email_valid, is_valid_string, is_valid_string_for_group_find, is_valid_ids_string, user_is_admin
 from app.database.models import UserForm, User, Group
 from app.emailsender import async_send_mail
 
@@ -46,7 +46,7 @@ async def register_start(callback: CallbackQuery, state: FSMContext):
         await callback.answer(strings.get('register').get('user_form_exist'))
         return
 
-    if await async_is_acceptance_of_forms_blocked():
+    if await async_is_forms_acceptance_blocked():
         await callback.answer(strings.get('register').get('acceptance_of_forms_blocked'))
         return
 

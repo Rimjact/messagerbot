@@ -3,7 +3,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 from sqlalchemy import BigInteger
 
-from app.utils import async_is_acceptance_of_forms_blocked
+from app.utils import async_is_forms_acceptance_blocked
 
 async def async_create_inline_keyboard(keyboard_data, adjust: int) -> InlineKeyboardMarkup:
     """Асинхронный метод, который создаёт и возвращает инлайн клавиатуру,
@@ -161,7 +161,7 @@ async def async_create_reply_keyboard_admin() -> ReplyKeyboardMarkup:
         '✉Сформировать рассылку',
         '🧍‍♂️🧍‍♀️Управление пользователями',
         '📝Управление группами',
-        '⛔Заблокировать подачу новых заявок' if not await async_is_acceptance_of_forms_blocked() else '✅Разблокировать подачу новых заявок'
+        '⛔Заблокировать подачу новых заявок' if not await async_is_forms_acceptance_blocked() else '✅Разблокировать подачу новых заявок'
     )
 
     return await async_create_reply_keyboard(keyboard_admin_data, 2)

@@ -17,7 +17,7 @@ class BotProperties(ModelBase):
     __tablename__ = 'properites'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    acceptance_of_forms_blocked: Mapped[bool] = mapped_column(nullable=False)
+    forms_acceptance_blocked: Mapped[bool] = mapped_column(nullable=False)
 
 
 class User(ModelBase):

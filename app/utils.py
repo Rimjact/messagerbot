@@ -11,7 +11,7 @@ GROUP_ID_OR_NAME_REGEX = re.compile(r'^[\u0400-\u04FF\s0-9-]+$')
 IDS_REGEX = re.compile(r'^\d+( \d+)*$')
 
 
-async def async_is_acceptance_of_forms_blocked() -> bool:
+async def async_is_forms_acceptance_blocked() -> bool:
     """Проверяет, заблокирован ли на данный момент
     приём новых заявок на регистрацию от пользователей.
 
@@ -21,7 +21,7 @@ async def async_is_acceptance_of_forms_blocked() -> bool:
     """
 
     bot_properties = await async_get_bot_properties()
-    return bool(bot_properties.acceptance_of_forms_blocked)
+    return bool(bot_properties.forms_acceptance_blocked)
 
 
 def is_email_valid(email: str) -> bool:
