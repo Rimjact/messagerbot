@@ -2,7 +2,7 @@ from os import getenv
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.database.models import ModelBase
+from app.model.database.models import ModelBase
 
 
 engine = create_async_engine(getenv('DB_PATH'))
